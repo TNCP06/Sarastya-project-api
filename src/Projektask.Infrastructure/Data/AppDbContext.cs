@@ -50,6 +50,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(t => t.CreatedAt).HasColumnName("created_at");
             e.HasOne(t => t.Project).WithMany(p => p.Tasks)
                 .HasForeignKey(t => t.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            // CHECK constraint sesuai skema di kontrak
+            e.HasCheckConstraint("CHK_tasks_status", "status IN ('todo','in_progress','done')");
         });
     }
 }
