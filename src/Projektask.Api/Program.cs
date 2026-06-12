@@ -1,12 +1,16 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Projektask.Application.Interfaces;
+using Projektask.Application.Options;
 using Projektask.Application.Services;
+using Projektask.Application.Validators;
 using Projektask.Infrastructure.Data;
 using Projektask.Infrastructure.Repositories;
 using Serilog;
@@ -34,12 +38,22 @@ try
         ?? Environment.GetEnvironmentVariable("JWT_SECRET")
         ?? throw new InvalidOperationException("JWT secret not configured.");
 
+    var jwtExpiresInHours = builder.Configuration.GetValue<int>("Jwt:ExpiresInHours", 24);
+
     // DbContext (EF Core) — dipakai untuk write/CUD
     builder.Services.AddDbContext<AppDbContext>(opt =>
         opt.UseNpgsql(connectionString));
 
-    // Repository & Service DI
+    // JwtSettings disimpan di DI agar bisa dipakai AuthService tanpa coupling ke IConfiguration
+    builder.Services.AddSingleton(new JwtSettings(jwtSecret, jwtExpiresInHours));
+
+    // Inject koneksi Dapper — IDbConnection di-resolve per-request (Scoped)
+    builder.Services.AddScoped<System.Data.IDbConnection>(_ =>
+        new Npgsql.NpgsqlConnection(connectionString));
+
+    // Repository & Service — mirip binding di Laravel service container (App::bind)
     builder.Services.AddScoped<IUserReadRepository, UserReadRepository>();
+    builder.Services.AddScoped<IUserWriteRepository, UserWriteRepository>();
     builder.Services.AddScoped<IProjectReadRepository, ProjectReadRepository>();
     builder.Services.AddScoped<IProjectWriteRepository, ProjectWriteRepository>();
     builder.Services.AddScoped<ITaskReadRepository, TaskReadRepository>();
@@ -48,9 +62,8 @@ try
     builder.Services.AddScoped<IProjectService, ProjectService>();
     builder.Services.AddScoped<ITaskService, TaskService>();
 
-    // Inject connection string ke repositories yang pakai Dapper (raw SQL)
-    builder.Services.AddScoped<System.Data.IDbConnection>(_ =>
-        new Npgsql.NpgsqlConnection(connectionString));
+    // Supaya User.FindFirst("sub") bekerja — tanpa ini JwtBearer memetakan "sub" ke ClaimTypes.NameIdentifier
+    JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
     // JWT Authentication — mirip guard di Laravel
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -66,7 +79,7 @@ try
                     Encoding.UTF8.GetBytes(jwtSecret))
             };
 
-            // Kembalikan format error kontrak bagian 4 saat token tidak valid
+            // Kembalikan format error kontrak bagian 4 saat token tidak valid / tidak ada
             opt.Events = new JwtBearerEvents
             {
                 OnChallenge = async ctx =>
@@ -83,8 +96,23 @@ try
     builder.Services.AddAuthorization();
 
     // FluentValidation — daftarkan semua validator dari assembly Application
-    builder.Services.AddValidatorsFromAssemblyContaining<Projektask.Application.Validators.RegisterValidator>();
+    builder.Services.AddValidatorsFromAssemblyContaining<RegisterValidator>();
     builder.Services.AddFluentValidationAutoValidation();
+
+    // Format error validasi sesuai kontrak bagian 4: { message, errors: { field: [msg] } }
+    builder.Services.Configure<ApiBehaviorOptions>(opt =>
+    {
+        opt.InvalidModelStateResponseFactory = ctx =>
+        {
+            var errors = ctx.ModelState
+                .Where(x => x.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    kv => kv.Key,
+                    kv => kv.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
+
+            return new BadRequestObjectResult(new { message = "Validasi gagal", errors });
+        };
+    });
 
     builder.Services.AddControllers();
 
@@ -166,8 +194,9 @@ try
 
     app.Run();
 }
-catch (Exception ex)
+catch (Exception ex) when (ex is not HostAbortedException)
 {
+    // HostAbortedException dilempar oleh dotnet-ef saat membaca DbContext — bukan error sungguhan
     Log.Fatal(ex, "Application startup failed");
     throw;
 }
