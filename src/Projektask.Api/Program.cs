@@ -1,4 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -62,13 +61,14 @@ try
     builder.Services.AddScoped<IProjectService, ProjectService>();
     builder.Services.AddScoped<ITaskService, TaskService>();
 
-    // Supaya User.FindFirst("sub") bekerja — tanpa ini JwtBearer memetakan "sub" ke ClaimTypes.NameIdentifier
-    JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
-
     // JWT Authentication — mirip guard di Laravel
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(opt =>
         {
+            // MapInboundClaims = false → "sub" tetap "sub", tidak dipetakan ke ClaimTypes.NameIdentifier
+            // Tanpa ini, User.FindFirst("sub") mengembalikan null
+            opt.MapInboundClaims = false;
+
             opt.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = false,
