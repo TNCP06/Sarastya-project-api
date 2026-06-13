@@ -19,6 +19,9 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
 
+// Dapper: DateOnly tidak dikenali otomatis dari kolom PostgreSQL 'date' — daftarkan handler manual
+Dapper.SqlMapper.AddTypeHandler(new Projektask.Infrastructure.Data.DateOnlyTypeHandler());
+
 try
 {
     var builder = WebApplication.CreateBuilder(args);
