@@ -3,7 +3,7 @@
 
 > Dokumen ini adalah ACUAN TUNGGAL. Backend mengimplementasikan persis ini; web dan Flutter mengonsumsi persis ini. Setelah backend deploy (Hari 3), kontrak ini DIBEKUKAN — perubahan apa pun harus disengaja dan dicatat.
 
-Base URL produksi: `https://<nama-app>.onrender.com/api`
+Base URL produksi: `http://<EC2-PUBLIC-IP>:8080/api`
 Semua request & response: `Content-Type: application/json`
 
 ---
@@ -262,7 +262,7 @@ Feedback wajib di tiap aksi: loading state saat request, pesan sukses/error sete
 | Repo | Isi | Deploy |
 |---|---|---|
 | `Sarastya-project` *(sudah di-submit)* | README induk: deskripsi, arsitektur, link ke 3 repo + link deploy | – |
-| `Sarastya-project-api` | Backend ASP.NET Core 8 | Render.com |
+| `Sarastya-project-api` | Backend ASP.NET Core 8 | EC2 AWS (Docker Compose) |
 | `Sarastya-project-web` | Frontend Next.js | Vercel |
 | `Sarastya-project-mobile` | Frontend Flutter | APK di GitHub Release |
 

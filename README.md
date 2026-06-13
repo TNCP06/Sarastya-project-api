@@ -43,7 +43,7 @@ docker run -d \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=devpass \
   -p 5432:5432 \
-  postgres:15
+  postgres:16-alpine
 ```
 
 ### 2. Konfigurasi lokal
@@ -78,25 +78,54 @@ dotnet run --project src/Projektask.Api
 
 Migrasi database dijalankan otomatis saat startup. Swagger tersedia di: `http://localhost:5284/swagger`
 
-## Environment Variables (Production / Render)
+## Environment Variables (Production)
+
+Diisi di file `.env` di server (lihat `.env.example` untuk template):
 
 | Variable | Deskripsi |
 |---|---|
-| `ConnectionStrings__Default` | Connection string PostgreSQL |
-| `JWT_SECRET` | Secret key JWT (min. 32 karakter) |
-| `ALLOWED_ORIGINS` | Origins CORS, koma-separated (contoh: `https://app.example.com`) |
-| `PORT` | Port server — diisi otomatis oleh Render |
+| `POSTGRES_DB` | Nama database PostgreSQL |
+| `POSTGRES_USER` | Username PostgreSQL |
+| `POSTGRES_PASSWORD` | Password PostgreSQL |
+| `ConnectionStrings__Default` | Connection string penuh (Host=db;Port=5432;...) |
+| `Jwt__Secret` | Secret key JWT (min. 32 karakter) |
+| `Jwt__ExpiresInHours` | Masa berlaku token dalam jam (default: 24) |
+| `AllowedOrigins` | Origins CORS, koma-separated |
 
-## Deploy ke Render
+## Deploy ke EC2 via Docker Compose
 
-1. Push repository ke GitHub
-2. Buat **Web Service** baru di [render.com](https://render.com)
-3. Setting:
-   - **Runtime**: Docker
-   - **Build Command**: *(otomatis dari Dockerfile)*
-   - **Health Check Path**: `/health`
-4. Tambahkan environment variables di tab **Environment**
-5. Buat **PostgreSQL** database di Render → salin **Internal Connection String** ke `ConnectionStrings__Default`
+### Prasyarat di EC2
+- Docker + Docker Compose plugin terinstall
+- Port 8080 dibuka di Security Group
+
+### Langkah deploy
+
+```bash
+# 1. Clone repo
+git clone <repo-url>
+cd Sarastya-project-api
+
+# 2. Buat file .env dari template
+cp .env.example .env
+nano .env   # isi POSTGRES_PASSWORD, Jwt__Secret, AllowedOrigins
+
+# 3. Buat deploy.sh executable dan jalankan
+chmod +x deploy.sh
+./deploy.sh
+```
+
+API tersedia di: `http://<EC2-PUBLIC-IP>:8080`  
+Swagger UI: `http://<EC2-PUBLIC-IP>:8080/swagger`
+
+### Re-deploy setelah push
+
+```bash
+./deploy.sh
+```
+
+Script ini menjalankan `git pull` → rebuild image → restart container → tampilkan 50 baris log terakhir.
+
+> Migrasi database dijalankan **otomatis** saat container `api` start.
 
 ## Endpoint API
 
