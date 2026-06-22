@@ -9,7 +9,10 @@
 
 ## What changes from the ProjekTask scaffold
 
-Same proven layered architecture, **new domain**: repurpose `Projektask.*` → `SaraDrive.*`.
+> **Branch is a clean slate** (ProjekTask removed). Build fresh, using the ProjekTask layout on
+> `main` (and the source project's `bot/`+`web/`) only as a reference.
+
+Same proven layered architecture, **new domain**: scaffold `SaraDrive.*` fresh.
 - Keep: ASP.NET Core 8 layered (Api / Application / Infrastructure / Domain), **Dapper for reads,
   EF Core for writes**, JWT Bearer (HS256), FluentValidation, Serilog, global exception handler,
   Swagger.
@@ -43,7 +46,8 @@ Respect the load-bearing invariants from the source system: `items.slug` immutab
 `parts.channel_msg_id` UNIQUE; soft-delete via `deleted_at`; `is_private` partition; per-part thumbs.
 
 ## Tasks
-- 1A ☐ Rename solution/projects/namespaces `Projektask.*` → `SaraDrive.*` (sln, csproj, Dockerfile, Program.cs).
+- 1A ☐ Scaffold fresh `SaraDrive.*` layered solution (Api/Application/Infrastructure/Domain), sln,
+       csproj, Dockerfile, Program.cs — mirroring the ProjekTask structure on `main`.
 - 1B ☐ Coordinate `users` table into umbrella `schema.sql`.
 - 1C ☐ Domain entities for the model above.
 - 1D ☐ EF `DbContext` mapped to existing tables (no prod migrations) + Dapper read repos.
