@@ -46,17 +46,21 @@ Respect the load-bearing invariants from the source system: `items.slug` immutab
 `parts.channel_msg_id` UNIQUE; soft-delete via `deleted_at`; `is_private` partition; per-part thumbs.
 
 ## Tasks
-- 1A ☐ Scaffold fresh `SaraDrive.*` layered solution (Api/Application/Infrastructure/Domain), sln,
+- 1A ☑ Scaffold fresh `SaraDrive.*` layered solution (Api/Application/Infrastructure/Domain), sln,
        csproj, Dockerfile, Program.cs — mirroring the ProjekTask structure on `main`.
-- 1B ☐ Coordinate `users` table into umbrella `schema.sql`.
-- 1C ☐ Domain entities for the model above.
-- 1D ☐ EF `DbContext` mapped to existing tables (no prod migrations) + Dapper read repos.
-- 1E ☐ Auth (register/login/me, JWT, BCrypt, validators) + Serilog + global exception + Swagger.
-- 1F ☐ Drive READ endpoints (Dapper).
-- 1G ☐ Drive WRITE endpoints (EF/SQL): folders, items, tags.
-- 1H ☐ Uploads enqueue/status; stream-info + subtitles passthrough.
-- 1I ☐ CORS for drive domain; env/appsettings; `kontrak-api.md` (copy to web+mobile repos); README;
-       verify `dotnet build` + Swagger loads.
+- 1B ☑ Coordinate `users` table into umbrella `schema.sql` — defined in [`db/users.sql`](./db/users.sql);
+       Phase 2B appends it to the umbrella schema. Case-insensitive unique email via lower().
+- 1C ☑ Domain entities for the model above (User, Folder, Item, Part, Tag, ItemTag, Thumbnail, Subtitle, UploadJob).
+- 1D ☑ EF `DbContext` mapped to existing tables (no prod migrations) + Dapper read repos.
+- 1E ☑ Auth (register/login/me, JWT, BCrypt, validators) + Serilog + global exception + Swagger.
+- 1F ☑ Drive READ endpoints (Dapper): drive, item, search, gallery, trash, stream-info, subtitles.
+- 1G ☑ Drive WRITE endpoints (EF/SQL): folders (create/rename/move/delete), items
+       (update/favorite/private/move/soft-delete/restore/purge), tags CRUD.
+- 1H ☑ Uploads enqueue/status; stream-info + subtitles passthrough.
+- 1I ☑ CORS for drive domain; env/appsettings; `kontrak-api.md` (copied to web+mobile repos); README;
+       verified `dotnet build` (0 errors/warnings) + Swagger loads (27 endpoints, /health 200, 401 on protected).
+
+## Status: Phase 1 COMPLETE (build verified locally). Pending: runtime test against live Postgres on VPS (Phase 5).
 
 ## Deploy
 - Container `scd-api`, internal port 8080 (host 8090 for debugging only). Reached publicly only via
