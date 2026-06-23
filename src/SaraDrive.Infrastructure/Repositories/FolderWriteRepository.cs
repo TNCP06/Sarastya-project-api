@@ -1,0 +1,86 @@
+using Microsoft.EntityFrameworkCore;
+using SaraDrive.Application.Interfaces;
+using SaraDrive.Domain.Entities;
+using SaraDrive.Infrastructure.Data;
+
+namespace SaraDrive.Infrastructure.Repositories;
+
+// Folder writes via EF Core. created_at/updated_at default to now_text() at the DB.
+public class FolderWriteRepository(AppDbContext db) : IFolderWriteRepository
+{
+    public async Task<Folder> CreateAsync(Folder folder)
+    {
+        db.Folders.Add(folder);
+        await db.SaveChangesAsync();
+        return folder;
+    }
+
+    public async Task<Folder?> GetByIdAsync(long id)
+        => await db.Folders.FirstOrDefaultAsync(f => f.Id == id);
+
+    public async Task<Folder> UpdateAsync(Folder folder)
+    {
+        folder.UpdatedAt = SqlTime.NowText();
+        await db.SaveChangesAsync();
+        return folder;
+    }
+
+    // Soft-delete every item inside the folder subtree, and soft-delete the folders.
+    public async Task DeleteRecursiveAsync(long id)
+    {
+        var folderIds = await GetDescendantFolderIdsAsync(id);
+        
+        await db.Items
+            .Where(i => i.FolderId != null && folderIds.Contains(i.FolderId.Value) && i.DeletedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.DeletedAt, SqlTime.NowText()));
+
+        await db.Folders
+            .Where(f => folderIds.Contains(f.Id) && f.DeletedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.DeletedAt, SqlTime.NowText()));
+    }
+
+    public async Task PurgeAsync(long id)
+    {
+        var folderIds = await GetDescendantFolderIdsAsync(id);
+        await db.Folders
+            .Where(f => folderIds.Contains(f.Id))
+            .ExecuteDeleteAsync();
+    }
+
+    // The folder itself plus all descendant folder ids (recursive CTE).
+    public async Task<IReadOnlyList<long>> GetDescendantFolderIdsAsync(long id)
+    {
+        var ids = await db.Database
+            .SqlQuery<long>($"""
+                WITH RECURSIVE sub AS (
+                    SELECT id FROM folders WHERE id = {id}
+                    UNION ALL
+                    SELECT f.id FROM folders f JOIN sub ON f.parent_id = sub.id)
+                SELECT id AS "Value" FROM sub
+                """)
+            .ToListAsync();
+        return ids;
+    }
+
+    public async Task SetPrivateRecursiveAsync(long id, bool value)
+    {
+        var folderIds = await GetDescendantFolderIdsAsync(id);
+        if (folderIds.Count == 0) return;
+
+        await db.Folders
+            .Where(f => folderIds.Contains(f.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.IsPrivate, value));
+
+        // The moved top folder lands at the destination space root; descendants keep structure.
+        await db.Folders
+            .Where(f => f.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(f => f.ParentId, (long?)null)
+                .SetProperty(f => f.UpdatedAt, SqlTime.NowText()));
+
+        // Preserve item updated_at: hiding/unhiding is not a content change.
+        await db.Items
+            .Where(i => i.FolderId != null && folderIds.Contains(i.FolderId.Value))
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.IsPrivate, value));
+    }
+}

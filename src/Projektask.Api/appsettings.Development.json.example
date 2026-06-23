@@ -1,9 +1,0 @@
-{
-  "ConnectionStrings": {
-    "Default": "Host=localhost;Port=5432;Database=projektask;Username=YOUR_USER;Password=YOUR_PASSWORD"
-  },
-  "Jwt": {
-    "Secret": "REPLACE_WITH_MIN_32_CHAR_RANDOM_SECRET"
-  },
-  "AllowedOrigins": "http://localhost:3000"
-}

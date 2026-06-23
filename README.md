@@ -1,148 +1,75 @@
-# ProjekTask API
+# SaraDrive API
 
-Backend REST API untuk aplikasi manajemen **Project & Task** — dibuat sebagai project-based test Sarastya.
+REST backend for **Sarastya Drive** — a Telegram-backed cloud drive. ASP.NET Core 8, layered
+(Api / Application / Infrastructure / Domain), **Dapper for reads + EF Core for writes**, JWT auth
+(HS256 + BCrypt), FluentValidation, Serilog, global exception handler, Swagger.
 
-## Tech Stack
+One of four repos in the Sarastya Drive system (umbrella `Sarastya-project` runs the Python Telegram
+engine + Postgres + compose; `Sarastya-project-web` is the Next.js dashboard; `Sarastya-project-mobile`
+is the Flutter client). This API is the JWT auth + metadata-CRUD layer consumed by web and mobile.
+Work happens on branch **`feat/cloud-drive`**; `main` keeps the old ProjekTask API.
 
-| Layer | Teknologi |
-|---|---|
-| Framework | ASP.NET Core 8 Web API |
-| ORM (write) | Entity Framework Core 8 + Npgsql |
-| Query (read) | Dapper 2 + raw SQL |
-| Auth | JWT Bearer (HS256) |
-| Validasi | FluentValidation |
-| Logging | Serilog → Console |
-| Database | PostgreSQL 15+ |
+The frozen request/response contract is **[`kontrak-api.md`](./kontrak-api.md)**.
 
-## Arsitektur
+## Architecture
 
 ```
-Projektask.Api           ← Controller, Middleware, Program.cs
-Projektask.Application   ← Service, Interface, DTO, Validator, Exception
-Projektask.Infrastructure← Repository (Dapper read + EF Core write), DbContext, Migration
-Projektask.Domain        ← Entity (POCO)
+src/
+  SaraDrive.Domain          entities (User, Folder, Item, Part, Tag, ItemTag, Thumbnail, Subtitle, UploadJob)
+  SaraDrive.Application      DTOs, interfaces, services, validators, options, exceptions
+  SaraDrive.Infrastructure   AppDbContext (EF), Dapper read repos, EF write repos
+  SaraDrive.Api             controllers, Program.cs, GlobalExceptionHandler, Swagger
 ```
 
-**Aturan akses data:**
-- `GET` / baca → **Dapper** (raw SQL, eksplisit, mudah di-review)
-- `POST` / `PUT` / `DELETE` → **EF Core** (type-safe, migration-friendly)
+- **Reads → Dapper raw SQL** (`DriveReadRepository`, `UserReadRepository`).
+- **Writes → EF Core** (`*WriteRepository`), with raw SQL where the schema's TEXT timestamps /
+  `ON CONFLICT` / FK-cascade shape makes EF awkward (tag upsert, purge).
 
-## Setup Lokal
+## Authorization model (read this)
 
-### Prasyarat
+The drive is **single-tenant** — one owner's library. `folders`/`items` have no `user_id`, so there
+is no per-user partitioning: a valid JWT simply grants access to the drive. The `users` table exists
+only for web/mobile authentication. `space=main|private` partitions the public view from the
+PIN-gated Private space. (This differs from the ProjekTask submission, which was per-user.)
 
-- .NET 8 SDK
-- Docker (untuk PostgreSQL)
+## Database & schema ownership
 
-### 1. Jalankan PostgreSQL via Docker
+The schema is **owned by `schema.sql` in the umbrella repo** (the Postgres container applies it on
+first init; the Python engine and web share the same tables). **This API runs NO EF migrations in
+production** — `AppDbContext` only maps EF entities onto the existing tables.
+
+The `users` table this API needs is defined in [`db/users.sql`](./db/users.sql); Phase 2B appends it
+to the umbrella `schema.sql` (after `now_text()` is defined).
+
+Timestamps are TEXT in `'YYYY-MM-DD HH:MM:SS'` (UTC) via `now_text()` — kept identical across the
+Python engine, web, and this API (`SqlTime.NowText()` for writes).
+
+## Run locally
+
+Requires .NET 8 SDK and a Postgres with the umbrella schema + `db/users.sql` applied.
 
 ```bash
-docker run -d \
-  --name pg-projektask \
-  -e POSTGRES_DB=projektask \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=devpass \
-  -p 5432:5432 \
-  postgres:16-alpine
+# config: copy the example and fill in connection string + a JWT secret (>= 32 bytes)
+cp src/SaraDrive.Api/appsettings.Development.json.example src/SaraDrive.Api/appsettings.Development.json
+
+dotnet build SaraDrive.sln
+dotnet run --project src/SaraDrive.Api      # → http://localhost:8090, Swagger at /swagger
 ```
 
-### 2. Konfigurasi lokal
+Configuration keys (appsettings or env vars, double-underscore form):
+`ConnectionStrings__Default`, `Jwt__Secret`, `Jwt__ExpiresInHours` (default 24),
+`Streamer__BaseUrl` (default `https://stream.tncp.web.id`), `AllowedOrigins` (comma-separated CORS).
 
-Salin file example dan isi dengan nilai lokal:
+## Deploy
 
-```bash
-cp src/Projektask.Api/appsettings.Development.json.example \
-   src/Projektask.Api/appsettings.Development.json
-```
+Container **`scd-api`**, internal port 8080 (host 8090 for debugging only), wired by the umbrella
+`docker-compose.yml` (`COMPOSE_PROJECT_NAME=scd`). Reachable publicly only via the web's `/papi/*`
+rewrite. Connection string + `Jwt__Secret` come from the umbrella `~/scd/.env`. See [`Dockerfile`](./Dockerfile).
 
-Edit `appsettings.Development.json`:
+## Endpoints
 
-```json
-{
-  "ConnectionStrings": {
-    "Default": "Host=localhost;Port=5432;Database=projektask;Username=postgres;Password=devpass"
-  },
-  "Jwt": {
-    "Secret": "min-32-karakter-rahasia-lokal-anda",
-    "ExpiresInHours": 24
-  },
-  "AllowedOrigins": "http://localhost:3000"
-}
-```
-
-### 3. Jalankan aplikasi
-
-```bash
-dotnet run --project src/Projektask.Api
-```
-
-Migrasi database dijalankan otomatis saat startup. Swagger tersedia di: `http://localhost:5284/swagger`
-
-## Environment Variables (Production)
-
-Diisi di file `.env` di server (lihat `.env.example` untuk template):
-
-| Variable | Deskripsi |
-|---|---|
-| `POSTGRES_DB` | Nama database PostgreSQL |
-| `POSTGRES_USER` | Username PostgreSQL |
-| `POSTGRES_PASSWORD` | Password PostgreSQL |
-| `ConnectionStrings__Default` | Connection string penuh (Host=db;Port=5432;...) |
-| `Jwt__Secret` | Secret key JWT (min. 32 karakter) |
-| `Jwt__ExpiresInHours` | Masa berlaku token dalam jam (default: 24) |
-| `AllowedOrigins` | Origins CORS, koma-separated |
-
-## Deploy ke EC2 via Docker Compose
-
-### Prasyarat di EC2
-- Docker + Docker Compose plugin terinstall
-- Port 8080 dibuka di Security Group
-
-### Langkah deploy
-
-```bash
-# 1. Clone repo
-git clone <repo-url>
-cd Sarastya-project-api
-
-# 2. Buat file .env dari template
-cp .env.example .env
-nano .env   # isi POSTGRES_PASSWORD, Jwt__Secret, AllowedOrigins
-
-# 3. Buat deploy.sh executable dan jalankan
-chmod +x deploy.sh
-./deploy.sh
-```
-
-API tersedia di: `http://<EC2-PUBLIC-IP>:8080`  
-Swagger UI: `http://<EC2-PUBLIC-IP>:8080/swagger`
-
-### Re-deploy setelah push
-
-```bash
-./deploy.sh
-```
-
-Script ini menjalankan `git pull` → rebuild image → restart container → tampilkan 50 baris log terakhir.
-
-> Migrasi database dijalankan **otomatis** saat container `api` start.
-
-## Endpoint API
-
-Buka Swagger UI untuk dokumentasi interaktif lengkap.
-
-| Method | Path | Auth | Deskripsi |
-|---|---|---|---|
-| POST | `/api/auth/register` | — | Daftar user baru |
-| POST | `/api/auth/login` | — | Login, dapat JWT |
-| GET | `/api/auth/me` | ✓ | Info user saat ini |
-| GET | `/api/projects` | ✓ | List semua project milik user |
-| POST | `/api/projects` | ✓ | Buat project baru |
-| GET | `/api/projects/{id}` | ✓ | Detail project + daftar task |
-| PUT | `/api/projects/{id}` | ✓ | Update project |
-| DELETE | `/api/projects/{id}` | ✓ | Hapus project |
-| GET | `/api/projects/{id}/tasks` | ✓ | List task (opsional: `?status=todo\|in_progress\|done`) |
-| POST | `/api/projects/{id}/tasks` | ✓ | Buat task baru |
-| PUT | `/api/tasks/{id}` | ✓ | Update task |
-| DELETE | `/api/tasks/{id}` | ✓ | Hapus task |
-| GET | `/health` | — | Health check |
+Auth `POST /api/auth/{register,login}`, `GET /api/auth/me`. Drive read `GET /api/drive`,
+`/api/items/{id}`, `/api/search`, `/api/gallery/{id}`, `/api/trash`, `/api/items/{id}/stream-info`,
+`/api/parts/{id}/subtitles`. Folders/Items/Tags CRUD, folder-private moves, and Uploads
+enqueue/list/status controls. Full detail in [`kontrak-api.md`](./kontrak-api.md). `GET /health`
+is public.

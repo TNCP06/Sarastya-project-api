@@ -1,0 +1,10 @@
+{
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Port=5433;Database=scd;Username=scd;Password=scd"
+  },
+  "Jwt": {
+    "Secret": "dev-only-change-me-to-a-long-random-secret-at-least-32-bytes",
+    "ExpiresInHours": 24
+  },
+  "AllowedOrigins": "http://localhost:3000,http://localhost:3100"
+}
