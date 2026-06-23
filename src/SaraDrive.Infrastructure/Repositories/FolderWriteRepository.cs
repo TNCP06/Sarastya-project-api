@@ -25,17 +25,26 @@ public class FolderWriteRepository(AppDbContext db) : IFolderWriteRepository
         return folder;
     }
 
-    // Soft-delete every item inside the folder subtree, then hard-delete the top folder.
-    // parent_id is ON DELETE CASCADE, so child folders go with it. Items use ON DELETE SET NULL,
-    // so we soft-delete them first (matching the web's deleteFolder behavior) to keep them in Trash.
+    // Soft-delete every item inside the folder subtree, and soft-delete the folders.
     public async Task DeleteRecursiveAsync(long id)
     {
         var folderIds = await GetDescendantFolderIdsAsync(id);
+        
         await db.Items
             .Where(i => i.FolderId != null && folderIds.Contains(i.FolderId.Value) && i.DeletedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(i => i.DeletedAt, SqlTime.NowText()));
 
-        await db.Folders.Where(f => f.Id == id).ExecuteDeleteAsync();
+        await db.Folders
+            .Where(f => folderIds.Contains(f.Id) && f.DeletedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.DeletedAt, SqlTime.NowText()));
+    }
+
+    public async Task PurgeAsync(long id)
+    {
+        var folderIds = await GetDescendantFolderIdsAsync(id);
+        await db.Folders
+            .Where(f => folderIds.Contains(f.Id))
+            .ExecuteDeleteAsync();
     }
 
     // The folder itself plus all descendant folder ids (recursive CTE).

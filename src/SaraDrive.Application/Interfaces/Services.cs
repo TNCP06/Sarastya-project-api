@@ -27,6 +27,7 @@ public interface IFolderService
     Task MoveAsync(long id, FolderMoveDto dto);
     Task SetPrivateAsync(long id, bool value);
     Task DeleteAsync(long id);
+    Task PurgeAsync(long id);
 }
 
 public interface IItemService

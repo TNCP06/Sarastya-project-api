@@ -66,6 +66,19 @@ public class ItemWriteRepository(AppDbContext db) : IItemWriteRepository
 
     public async Task<bool> RestoreAsync(long id)
     {
+        var item = await db.Items.FindAsync(id);
+        if (item != null && item.FolderId.HasValue)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                WITH RECURSIVE sub AS (
+                    SELECT id, parent_id FROM folders WHERE id = {item.FolderId.Value}
+                    UNION ALL
+                    SELECT f.id, f.parent_id FROM folders f JOIN sub ON f.id = sub.parent_id
+                )
+                UPDATE folders SET deleted_at = NULL WHERE id IN (SELECT id FROM sub)
+                """);
+        }
+
         var n = await db.Items
             .Where(i => i.Id == id)
             .ExecuteUpdateAsync(s => s.SetProperty(i => i.DeletedAt, (string?)null));

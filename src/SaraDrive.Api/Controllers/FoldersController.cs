@@ -41,4 +41,11 @@ public class FoldersController(IFolderService folders) : ControllerBase
         await folders.DeleteAsync(id);
         return NoContent();
     }
+
+    [HttpPost("{id:long}/purge")]
+    public async Task<IActionResult> Purge(long id)
+    {
+        await folders.PurgeAsync(id);
+        return NoContent();
+    }
 }

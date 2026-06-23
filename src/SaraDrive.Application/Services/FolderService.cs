@@ -60,6 +60,12 @@ public class FolderService(IFolderWriteRepository repo) : IFolderService
         await repo.DeleteRecursiveAsync(id);
     }
 
+    public async Task PurgeAsync(long id)
+    {
+        _ = await repo.GetByIdAsync(id) ?? throw new NotFoundException();
+        await repo.PurgeAsync(id);
+    }
+
     private static FolderDto ToDto(Folder f)
-        => new(f.Id, f.Name, f.ParentId, f.IsPrivate, f.CreatedAt, f.UpdatedAt);
+        => new(f.Id, f.Name, f.ParentId, f.IsPrivate, f.CreatedAt, f.UpdatedAt, f.DeletedAt);
 }

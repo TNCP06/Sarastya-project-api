@@ -65,7 +65,8 @@ public class DriveReadRepository(IDbConnection db) : IDriveReadRepository
 
         var folders = await db.QueryAsync<FolderDto>("""
             SELECT id AS Id, name AS Name, parent_id AS ParentId,
-                   (is_private = 1) AS IsPrivate, created_at AS CreatedAt, updated_at AS UpdatedAt
+                   (is_private = 1) AS IsPrivate, created_at AS CreatedAt, updated_at AS UpdatedAt,
+                   deleted_at AS DeletedAt
             FROM folders WHERE is_private = @P ORDER BY lower(name)
             """, new { P = p });
 

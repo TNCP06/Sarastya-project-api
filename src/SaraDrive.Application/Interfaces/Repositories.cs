@@ -37,6 +37,7 @@ public interface IFolderWriteRepository
     Task DeleteRecursiveAsync(long id);
     Task<IReadOnlyList<long>> GetDescendantFolderIdsAsync(long id);
     Task SetPrivateRecursiveAsync(long id, bool value);
+    Task PurgeAsync(long id);
 }
 
 public interface IItemWriteRepository

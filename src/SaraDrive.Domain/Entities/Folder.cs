@@ -1,5 +1,7 @@
 namespace SaraDrive.Domain.Entities;
 
+using System.Text.Json.Serialization;
+
 // A drive folder. Self-referencing tree via ParentId (ON DELETE CASCADE in the DB).
 // `IsPrivate` partitions the drive into the public Main space and the PIN-gated Private space.
 public class Folder
@@ -12,7 +14,10 @@ public class Folder
     public string UpdatedAt { get; set; } = string.Empty;
     public string? DeletedAt { get; set; }
 
+    [JsonIgnore]
     public Folder? Parent { get; set; }
-    public ICollection<Folder> Children { get; set; } = [];
-    public ICollection<Item> Items { get; set; } = [];
+    [JsonIgnore]
+    public ICollection<Folder> Children { get; set; } = new List<Folder>();
+    [JsonIgnore]
+    public ICollection<Item> Items { get; set; } = new List<Item>();
 }

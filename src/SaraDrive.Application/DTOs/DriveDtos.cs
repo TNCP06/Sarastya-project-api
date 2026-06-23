@@ -28,7 +28,8 @@ public record FolderDto(
     long? ParentId,
     bool IsPrivate,
     string CreatedAt,
-    string UpdatedAt);
+    string UpdatedAt,
+    string? DeletedAt);
 
 // The full payload for one space (Main or Private): the shape the web's getDriveData expects.
 public record DriveDto(
