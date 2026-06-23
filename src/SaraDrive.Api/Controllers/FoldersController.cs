@@ -28,6 +28,13 @@ public class FoldersController(IFolderService folders) : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:long}/private")]
+    public async Task<IActionResult> Private(long id, [FromBody] FolderPrivateDto dto)
+    {
+        await folders.SetPrivateAsync(id, dto.Value);
+        return NoContent();
+    }
+
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> Delete(long id)
     {

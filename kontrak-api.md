@@ -110,6 +110,8 @@ URL stream tiap part (untuk player video):
 - `PUT /api/folders/{id}` — body `{ "name": "Ganti" }` → `200` FolderDto. Error `404`.
 - `POST /api/folders/{id}/move` — body `{ "targetParentId": 5 | null }` → `204`. Menolak siklus
   (ke diri sendiri / subfolder sendiri) dengan `400`. Error `404`.
+- `POST /api/folders/{id}/private` — body `{ "value": true }` → `204`. Memindahkan folder
+  beserta subtree ke Main/Private; folder teratas dilepas ke root space tujuan.
 - `DELETE /api/folders/{id}` — `204`. Soft-delete semua item di dalam subtree (ke Trash), lalu
   hard-delete folder (anak folder ikut via cascade). Error `404`.
 
@@ -118,7 +120,7 @@ URL stream tiap part (untuk player video):
   → `200` ItemDetail. `tags` null = biarkan; array (termasuk kosong) = ganti total. **`slug` tidak
   pernah berubah** (kunci pengelompokan multi-part + target deep-link unduhan). Error `400`/`404`.
 - `POST /api/items/{id}/favorite` — `{ "value": true }` → `204`.
-- `POST /api/items/{id}/private`  — `{ "value": true }` → `204`.
+- `POST /api/items/{id}/private`  — `{ "value": true }` → `204` dan `folderId` di-reset ke root space tujuan.
 - `POST /api/items/{id}/move`     — `{ "folderId": 5 | null }` → `204`.
 - `DELETE /api/items/{id}` — soft-delete ke Trash (`204`). File di Telegram tetap (restore lossless).
 - `POST /api/items/{id}/restore` — `204`.
@@ -140,9 +142,16 @@ URL stream tiap part (untuk player video):
   ```
   `201` → UploadJobDto.
 - `GET /api/uploads` → daftar job:
-  `[ { "id", "kind", "title", "tags", "status", "progress", "message", "partsDone",
-       "totalBytes", "createdAt", "updatedAt" } ]`. `status`:
-  `queued|pending|running|done|error|canceled`.
+  `[ { "id", "kind", "title", "tags", "sourcePath", "partSize", "origin", "status",
+       "progress", "message", "partsDone", "totalBytes", "createdAt", "updatedAt" } ]`.
+  `status`: `queued|pending|running|done|error|canceled`.
+- `PUT /api/uploads/{id}` — edit job sebelum jalan; body
+  `{ "title": "...", "tags": "a,b", "partSize": 1500 }` → `204` hanya jika `status='queued'`.
+- `POST /api/uploads/{id}/start` — `queued → pending`, `204`.
+- `POST /api/uploads/{id}/cancel` — `queued|pending → canceled`, `204`.
+- `POST /api/uploads/{id}/retry` — `error → pending`, `204`.
+- `POST /api/uploads/start-all` — semua `queued → pending`, `204`.
+- `DELETE /api/uploads/finished` — hapus job `done|error|canceled`, `204`.
 
 ## 5. Bentuk error (seragam)
 - Validasi `400`: `{ "message": "Validasi gagal", "errors": { "field": ["pesan"] } }`.

@@ -4,6 +4,7 @@ namespace SaraDrive.Application.DTOs;
 public record FolderCreateDto(string Name, long? ParentId, bool IsPrivate = false);
 public record FolderRenameDto(string Name);
 public record FolderMoveDto(long? TargetParentId);
+public record FolderPrivateDto(bool Value);
 
 // --- Items ---
 // Metadata edit. `Tags` replaces the item's tag set when non-null (empty list clears them);
@@ -27,11 +28,16 @@ public record UploadEnqueueDto(
     bool CleanupSource = false,
     string Origin = "upload");
 
+public record UploadUpdateDto(string Title, string? Tags, int? PartSize);
+
 public record UploadJobDto(
     long Id,
     string Kind,
     string Title,
     string Tags,
+    string SourcePath,
+    int PartSize,
+    string Origin,
     string Status,
     int Progress,
     string? Message,

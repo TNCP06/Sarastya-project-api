@@ -142,9 +142,11 @@ public class DriveReadRepository(IDbConnection db) : IDriveReadRepository
 
     public async Task<IEnumerable<UploadJobDto>> GetUploadsAsync()
         => await db.QueryAsync<UploadJobDto>("""
-            SELECT id AS Id, kind AS Kind, title AS Title, tags AS Tags, status AS Status,
-                   progress AS Progress, message AS Message, parts_done AS PartsDone,
-                   total_bytes AS TotalBytes, created_at AS CreatedAt, updated_at AS UpdatedAt
+            SELECT id AS Id, kind AS Kind, title AS Title, tags AS Tags,
+                   source_path AS SourcePath, part_size AS PartSize, origin AS Origin,
+                   status AS Status, progress AS Progress, message AS Message,
+                   parts_done AS PartsDone, total_bytes AS TotalBytes,
+                   created_at AS CreatedAt, updated_at AS UpdatedAt
             FROM upload_jobs ORDER BY created_at DESC
             """);
 

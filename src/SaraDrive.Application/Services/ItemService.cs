@@ -35,9 +35,8 @@ public class ItemService(IItemWriteRepository repo, IDriveReadRepository read) :
 
     public async Task SetPrivateAsync(long id, bool value)
     {
-        var item = await repo.GetByIdAsync(id) ?? throw new NotFoundException();
-        item.IsPrivate = value;
-        await repo.UpdateAsync(item);
+        _ = await repo.GetByIdAsync(id) ?? throw new NotFoundException();
+        await repo.SetPrivateAsync(id, value);
     }
 
     public async Task MoveAsync(long id, long? folderId)

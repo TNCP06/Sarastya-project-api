@@ -36,6 +36,7 @@ public interface IFolderWriteRepository
     Task<Folder> UpdateAsync(Folder folder);
     Task DeleteRecursiveAsync(long id);
     Task<IReadOnlyList<long>> GetDescendantFolderIdsAsync(long id);
+    Task SetPrivateRecursiveAsync(long id, bool value);
 }
 
 public interface IItemWriteRepository
@@ -43,6 +44,7 @@ public interface IItemWriteRepository
     Task<Item?> GetByIdAsync(long id);
     Task<Item> UpdateAsync(Item item);
     Task ReplaceTagsAsync(long itemId, IEnumerable<string> tagNames);
+    Task<bool> SetPrivateAsync(long id, bool value);
     Task<bool> SoftDeleteAsync(long id);
     Task<bool> RestoreAsync(long id);
     Task<bool> PurgeAsync(long id);
@@ -60,4 +62,9 @@ public interface ITagWriteRepository
 public interface IUploadWriteRepository
 {
     Task<UploadJob> EnqueueAsync(UploadJob job);
+    Task<UploadJob?> GetBySourcePathAsync(string sourcePath);
+    Task<bool> UpdateQueuedAsync(long id, string title, string tags, int? partSize);
+    Task<bool> MarkStatusAsync(long id, string[] allowedStatuses, string status, string message);
+    Task StartAllQueuedAsync();
+    Task ClearFinishedAsync();
 }

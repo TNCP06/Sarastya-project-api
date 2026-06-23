@@ -45,6 +45,16 @@ public class ItemWriteRepository(AppDbContext db) : IItemWriteRepository
         }
     }
 
+    public async Task<bool> SetPrivateAsync(long id, bool value)
+    {
+        var n = await db.Items
+            .Where(i => i.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(i => i.IsPrivate, value)
+                .SetProperty(i => i.FolderId, (long?)null));
+        return n > 0;
+    }
+
     public async Task<bool> SoftDeleteAsync(long id)
     {
         // Trashing is not a content change → leave updated_at/date_added untouched (sort stability).

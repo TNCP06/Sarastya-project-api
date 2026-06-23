@@ -25,6 +25,7 @@ public interface IFolderService
     Task<FolderDto> CreateAsync(FolderCreateDto dto);
     Task<FolderDto> RenameAsync(long id, FolderRenameDto dto);
     Task MoveAsync(long id, FolderMoveDto dto);
+    Task SetPrivateAsync(long id, bool value);
     Task DeleteAsync(long id);
 }
 
@@ -51,4 +52,10 @@ public interface IUploadService
 {
     Task<UploadJobDto> EnqueueAsync(UploadEnqueueDto dto);
     Task<IEnumerable<UploadJobDto>> GetAllAsync();
+    Task UpdateQueuedAsync(long id, UploadUpdateDto dto);
+    Task CancelAsync(long id);
+    Task StartAsync(long id);
+    Task RetryAsync(long id);
+    Task StartAllAsync();
+    Task ClearFinishedAsync();
 }

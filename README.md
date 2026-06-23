@@ -70,5 +70,6 @@ rewrite. Connection string + `Jwt__Secret` come from the umbrella `~/scd/.env`. 
 
 Auth `POST /api/auth/{register,login}`, `GET /api/auth/me`. Drive read `GET /api/drive`,
 `/api/items/{id}`, `/api/search`, `/api/gallery/{id}`, `/api/trash`, `/api/items/{id}/stream-info`,
-`/api/parts/{id}/subtitles`. Folders/Items/Tags CRUD + Uploads enqueue/list. Full detail in
-[`kontrak-api.md`](./kontrak-api.md). `GET /health` is public.
+`/api/parts/{id}/subtitles`. Folders/Items/Tags CRUD, folder-private moves, and Uploads
+enqueue/list/status controls. Full detail in [`kontrak-api.md`](./kontrak-api.md). `GET /health`
+is public.

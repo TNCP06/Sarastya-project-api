@@ -48,6 +48,12 @@ public class FolderService(IFolderWriteRepository repo) : IFolderService
         await repo.UpdateAsync(folder);
     }
 
+    public async Task SetPrivateAsync(long id, bool value)
+    {
+        _ = await repo.GetByIdAsync(id) ?? throw new NotFoundException();
+        await repo.SetPrivateRecursiveAsync(id, value);
+    }
+
     public async Task DeleteAsync(long id)
     {
         _ = await repo.GetByIdAsync(id) ?? throw new NotFoundException();

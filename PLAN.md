@@ -34,11 +34,13 @@ The API maps EF entities to existing tables and **does not run EF migrations in 
 - Auth: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` (JWT, BCrypt hash).
 - Drive read: `GET /api/drive?space=main|private`, `GET /api/items/{id}`, `GET /api/search?q=`,
   `GET /api/gallery/{id}`, `GET /api/trash`.
-- Folders: `POST /api/folders`, `PUT /api/folders/{id}`, `DELETE /api/folders/{id}` (recursive soft-delete), move.
+- Folders: `POST /api/folders`, `PUT /api/folders/{id}`, `DELETE /api/folders/{id}` (recursive soft-delete),
+  move, and `POST /api/folders/{id}/private` for moving folder subtrees across spaces.
 - Items: `PUT /api/items/{id}` (rename / tags / move / favorite / private), `DELETE /api/items/{id}`
   (soft), `POST /api/items/{id}/restore`, `POST /api/items/{id}/purge`.
 - Tags: `GET/POST/PUT/DELETE /api/tags`.
-- Uploads: `POST /api/uploads` (enqueue `upload_jobs`), `GET /api/uploads` (status list).
+- Uploads: `POST /api/uploads` (enqueue `upload_jobs`), `GET /api/uploads` (status list), plus
+  queue controls (`PUT`, start/cancel/retry/start-all/clear-finished) used by the web dashboard.
 - Helpers: `GET /api/items/{id}/stream-info` (part stream URLs / streamer base),
   `GET /api/parts/{id}/subtitles`. `GET /health`.
 
@@ -56,11 +58,11 @@ Respect the load-bearing invariants from the source system: `items.slug` immutab
 - 1F ☑ Drive READ endpoints (Dapper): drive, item, search, gallery, trash, stream-info, subtitles.
 - 1G ☑ Drive WRITE endpoints (EF/SQL): folders (create/rename/move/delete), items
        (update/favorite/private/move/soft-delete/restore/purge), tags CRUD.
-- 1H ☑ Uploads enqueue/status; stream-info + subtitles passthrough.
+- 1H ☑ Uploads enqueue/status plus Phase-3 queue controls; stream-info + subtitles passthrough.
 - 1I ☑ CORS for drive domain; env/appsettings; `kontrak-api.md` (copied to web+mobile repos); README;
-       verified `dotnet build` (0 errors/warnings) + Swagger loads (27 endpoints, /health 200, 401 on protected).
+       verified `dotnet build` (0 errors/warnings) + Swagger loads (/health 200, 401 on protected).
 
-## Status: Phase 1 COMPLETE (build verified locally). Pending: runtime test against live Postgres on VPS (Phase 5).
+## Status: Phase 1 COMPLETE; Phase 3 added web-support endpoints (build verified locally). Pending: runtime test against live Postgres on VPS (Phase 5).
 
 ## Deploy
 - Container `scd-api`, internal port 8080 (host 8090 for debugging only). Reached publicly only via

@@ -52,4 +52,26 @@ public class FolderWriteRepository(AppDbContext db) : IFolderWriteRepository
             .ToListAsync();
         return ids;
     }
+
+    public async Task SetPrivateRecursiveAsync(long id, bool value)
+    {
+        var folderIds = await GetDescendantFolderIdsAsync(id);
+        if (folderIds.Count == 0) return;
+
+        await db.Folders
+            .Where(f => folderIds.Contains(f.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.IsPrivate, value));
+
+        // The moved top folder lands at the destination space root; descendants keep structure.
+        await db.Folders
+            .Where(f => f.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(f => f.ParentId, (long?)null)
+                .SetProperty(f => f.UpdatedAt, SqlTime.NowText()));
+
+        // Preserve item updated_at: hiding/unhiding is not a content change.
+        await db.Items
+            .Where(i => i.FolderId != null && folderIds.Contains(i.FolderId.Value))
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.IsPrivate, value));
+    }
 }
